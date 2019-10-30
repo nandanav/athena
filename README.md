@@ -1,4 +1,4 @@
-# athena
-Discord bot for personal CTF server
+# Athena CTF Manager
+Discord bot for CTF servers
 
 By the MediumPurple CTF Team
