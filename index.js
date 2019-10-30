@@ -6,14 +6,7 @@ const client = new Discord.Client();
 let database = {};
 
 function updateData() {
-    fs.readFile('database.json', 'utf8', (err, data) => {
-        if (err){
-            console.log(err);
-        }else {
-            console.log(data + " at data");
-            database = JSON.parse(data);
-        }
-    });
+    database = JSON.parse(fs.readFileSync('database.json'))
 }
 
 updateData();
@@ -24,23 +17,10 @@ client.on('ready', () => {
         if (!(sanitized in database)) {
             let json = database;
             json[`${sanitized}`] = {};
-            fs.writeFile('database.json', JSON.stringify(json), 'utf8', (err) => {if (err) throw err; console.log("complete")});
+            fs.writeFileSync('database.json', JSON.stringify(json));
         }
     }
 });
-
-function fancyMSG(msg, title, info) {
-    const embed = new Discord.RichEmbed()
-        .setColor('#0099ff')
-        .setTitle(title)
-        .setAuthor('Athena', 'https://i.imgur.com/wSTFkRM.png', 'https://discord.js.org')
-        .setDescription(info)
-        .setThumbnail('https://i.imgur.com/wSTFkRM.png')
-        .setTimestamp()
-        .setFooter('Athena CTF Manager', 'https://i.imgur.com/wSTFkRM.png');
-
-    msg.channel.send(embed);
-}
 
 client.on('message', msg => {
     let prefix = "/";
@@ -50,25 +30,79 @@ client.on('message', msg => {
     if (msg.author.bot) return;
 
     updateData();
-
+    let json; 
     switch (command) {
         case 'hello':
             msg.channel.send("hi " + msg.guild + " member");
-            msg.delete();
             break;
         case 'ctf':
-            let json = database;
+            json = database
             if (args[0] == "add") {
                 json[msg.guild.name.replace(/ /gi, "-")][`${args[1]}`] = {};
             } else if (args[0] == "delete") {
                 delete json[msg.guild.name.replace(/ /gi, "-")][`${args[1]}`];
-            } 
-            fs.writeFile('database.json', JSON.stringify(json), 'utf8', (err) => {if (err) throw err; console.log("complete")});
+            }
+            fs.writeFileSync('database.json', JSON.stringify(json));
             break;
-        // case 'score':
+        case 'score':
+            json = database;
+            let ctf = args[0];
+            if(msg.author.username in json[msg.guild.name.replace(/ /gi, "-")][`${ctf}`]) {
+                json[msg.guild.name.replace(/ /gi, "-")][`${ctf}`][`${msg.author.username}`][`${args[1]}`] = parseInt(args[2]);
+            } else {
+                json[msg.guild.name.replace(/ /gi, "-")][`${ctf}`][`${msg.author.username}`] = {};
+                json[msg.guild.name.replace(/ /gi, "-")][`${ctf}`][`${msg.author.username}`][`${args[1]}`] = parseInt(args[2]);
+            }
+            fs.writeFileSync('database.json', JSON.stringify(json));
+            break;
         case 'leaderboard':
-            fancyMSG(msg, "leaderboard", "1. Tyler\n2. Abhi\n3. Tavin\n4. Ian");
-            msg.delete();
+            json = database;
+            if (!(args[0] in json[msg.guild.name.replace(/ /gi, "-")])) {
+                msg.channel.send("Error msg display formatting later")
+            } else {
+                let users = []
+                for (let user in json[msg.guild.name.replace(/ /gi, "-")][`${args[0]}`]) {
+                    total = 0;
+                    for (let problem in json[msg.guild.name.replace(/ /gi, "-")][`${args[0]}`][`${user}`]) {
+                        total += json[msg.guild.name.replace(/ /gi, "-")][`${args[0]}`][`${user}`][`${problem}`];                    
+                    }
+                    users.push([user, total])
+                }
+                console.log(users)
+
+                let sorted = []
+
+                for (let i = 0; i < users.length; i++) {
+                    sorted.push(i)
+                }
+
+                for (let i = 0; i < sorted.length; i++) {
+                    let top = i;
+                    for (let j = i+1; j < users.length; j++) {
+                        if (users[j][1] > users[top][1]) {
+                            top = j;
+                        }
+                    }
+                    let temp = i;
+                    sorted[i] = top;
+                    sorted[top] = temp;
+                }
+
+                for (let i in sorted) {
+                    console.log(users[i][0])
+                }
+
+                const embed = new Discord.RichEmbed()
+                    .setColor('#0099ff')
+                    .setTitle("Leaderboard")
+                    .setAuthor('Athena', 'https://i.imgur.com/wSTFkRM.png', 'https://discord.js.org')
+                    .setDescription("info goes here")
+                    .setThumbnail('https://i.imgur.com/wSTFkRM.png')
+                    .setTimestamp()
+                    .setFooter('Athena CTF Manager', 'https://i.imgur.com/wSTFkRM.png');
+            
+                msg.channel.send(embed);
+            }
             break;
         default:
             break;
